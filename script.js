@@ -333,25 +333,95 @@ function showAuthMessage(message, isError = false) {
 
 async function initializeSupabase() {
     const config = window.SUPABASE_CONFIG;
-    if (!window.supabase || !config?.url || !config?.publishableKey) {
-        showAuthMessage("Configure a Project URL e a chave pública do Supabase.", true);
+    if (!window.supabase?.createClient) {
+        showAuthMessage("A biblioteca do Supabase não carregou. Verifique a internet e atualize a página.", true);
+        return;
+    }
+    if (!config?.url || !config?.publishableKey) {
+        showAuthMessage("Configure a Project URL e a chave pública do Supabase em supabase-config.js.", true);
         return;
     }
 
-    supabaseClient = window.supabase.createClient(config.url, config.publishableKey);
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-        if (!session) {
-            currentUser = null;
-            document.body.classList.add("signed-out");
+    try {
+        supabaseClient = window.supabase.createClient(config.url, config.publishableKey);
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (!session) {
+                currentUser = null;
+                document.body.classList.add("signed-out");
+                return;
+            }
+            if (["INITIAL_SESSION", "SIGNED_IN", "TOKEN_REFRESHED"].includes(event)) {
+                currentUser = session.user;
+                setTimeout(() => loadCloudData(session.user).catch(error => {
+                    showAuthMessage(`Login efetuado, mas não consegui abrir seus dados: ${error.message}. Confira se executou supabase-schema.sql no Supabase.`, true);
+                }), 0);
+            }
+        });
+    } catch (error) {
+        supabaseClient = null;
+        showAuthMessage(`Não foi possível iniciar o Supabase: ${error.message}`, true);
+    }
+}
+
+function authErrorMessage(error) {
+    const message = error?.message || "Não foi possível conectar ao Supabase.";
+    if (/invalid login credentials/i.test(message)) return "Usuário ou senha incorretos. Se ainda não criou a conta, clique em Criar conta.";
+    if (/email.*(invalid|valid)|invalid.*email/i.test(message)) return "O Supabase recusou o e-mail interno usado para login por usuário. Verifique a configuração de autenticação do projeto.";
+    if (/fetch|network|failed to fetch/i.test(message)) return "Não consegui conectar ao Supabase. Confira sua internet e se a Project URL está correta.";
+    return message;
+}
+
+let authenticationInProgress = false;
+
+async function authenticate(action) {
+    if (authenticationInProgress) return;
+    if (!supabaseClient) {
+        showAuthMessage("A conexão com Supabase não iniciou. Veja a mensagem de configuração acima e atualize a página.", true);
+        return;
+    }
+
+    const username = $("auth-username").value.trim().toLowerCase();
+    const password = $("auth-password").value;
+    if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+        showAuthMessage("Use de 3 a 30 caracteres: letras sem acento, números ou _. Ex.: jose_gabriel", true);
+        return;
+    }
+    if (password.length < 6) {
+        showAuthMessage("A senha precisa ter pelo menos 6 caracteres.", true);
+        return;
+    }
+
+    const internalAuthEmail = `${username}@users.financas.invalid`;
+    authenticationInProgress = true;
+    const signInButton = $("auth-sign-in");
+    const signUpButton = $("auth-sign-up");
+    signInButton.disabled = signUpButton.disabled = true;
+    showAuthMessage(action === "signup" ? "Criando conta..." : "Entrando...");
+
+    try {
+        const result = action === "signup"
+            ? await supabaseClient.auth.signUp({
+                email: internalAuthEmail,
+                password,
+                options: { data: { username } }
+            })
+            : await supabaseClient.auth.signInWithPassword({
+                email: internalAuthEmail,
+                password
+            });
+
+        if (result.error) throw result.error;
+        if (action === "signup" && !result.data.session) {
+            showAuthMessage("Conta criada, mas o Supabase exige confirmação por e-mail. Desative a confirmação de e-mail em Authentication → Sign In / Providers → Email para usar somente nome de usuário.", true);
             return;
         }
-        if (["INITIAL_SESSION", "SIGNED_IN", "TOKEN_REFRESHED"].includes(event)) {
-            currentUser = session.user;
-            setTimeout(() => loadCloudData(session.user).catch(error => {
-                showAuthMessage(`Não foi possível carregar o banco: ${error.message}`, true);
-            }), 0);
-        }
-    });
+        showAuthMessage("Acesso autorizado. Carregando seus dados...");
+    } catch (error) {
+        showAuthMessage(authErrorMessage(error), true);
+    } finally {
+        authenticationInProgress = false;
+        signInButton.disabled = signUpButton.disabled = false;
+    }
 }
 
 function parseCurrencyInput(value) {
@@ -1423,49 +1493,6 @@ $("categories-grid").addEventListener("click", event => {
     if (action === "edit") openCategoryModal({ name, type });
     if (action === "delete") deleteCategory(name, type);
 });
-
-async function authenticate(action) {
-    if (!supabaseClient) {
-        showAuthMessage("A conexão Supabase não iniciou. Verifique a internet e atualize a página.", true);
-        return;
-    }
-
-    const username = $("auth-username").value.trim().toLowerCase();
-    const password = $("auth-password").value;
-    if (!/^[a-z0-9_]{3,30}$/.test(username)) {
-        showAuthMessage("Use de 3 a 30 caracteres: letras sem acento, números ou _. Ex.: jose_gabriel", true);
-        return;
-    }
-    if (password.length < 6) {
-        showAuthMessage("A senha precisa ter pelo menos 6 caracteres.", true);
-        return;
-    }
-
-    const internalAuthEmail = `${username}@users.financas.invalid`;
-    showAuthMessage(action === "signup" ? "Criando conta..." : "Entrando...");
-
-    try {
-        const result = action === "signup"
-            ? await supabaseClient.auth.signUp({
-                email: internalAuthEmail,
-                password,
-                options: { data: { username } }
-            })
-            : await supabaseClient.auth.signInWithPassword({
-                email: internalAuthEmail,
-                password
-            });
-
-        if (result.error) throw result.error;
-        if (action === "signup" && !result.data.session) {
-            showAuthMessage("Ative o cadastro sem confirmação de e-mail no Supabase para usar somente nome de usuário.", true);
-            return;
-        }
-        showAuthMessage("Acesso autorizado. Carregando seus dados...");
-    } catch (error) {
-        showAuthMessage(error.message || "Não foi possível conectar ao Supabase.", true);
-    }
-}
 
 $("auth-sign-in").addEventListener("click", () => authenticate("signin"));
 $("auth-sign-up").addEventListener("click", () => authenticate("signup"));
