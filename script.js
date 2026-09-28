@@ -1540,14 +1540,14 @@ document
 $("new-launch")
     .addEventListener(
         "click",
-        openModal
+        () => openModal()
     );
 
 
 $("new-launch-2")
     .addEventListener(
         "click",
-        openModal
+        () => openModal()
     );
 
 
