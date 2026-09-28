@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Finanças Pessoais</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- MENU LATERAL -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logo-icon">F</div>
+
+            <div>
+                <strong>Finanças</strong>
+                <span>Pessoais</span>
+            </div>
+        </div>
+
+        <nav>
+
+            <button class="menu-item active" data-section="dashboard">
+                ◈
+                <span>Dashboard</span>
+            </button>
+
+            <button class="menu-item" data-section="lancamentos">
+                ＋
+                <span>Lançamentos</span>
+            </button>
+
+            <button class="menu-item" data-section="fluxo-caixa">
+                ⇄
+                <span>Fluxo de caixa</span>
+            </button>
+
+            <button class="menu-item" data-section="categorias">
+                ▦
+                <span>Categorias</span>
+            </button>
+
+        </nav>
+
+        <div class="sidebar-footer">
+
+            <strong>Controle financeiro</strong>
+
+            <span>
+                Organize suas receitas e despesas.
+            </span>
+
+        </div>
+
+    </aside>
+
+
+    <!-- CONTEÚDO PRINCIPAL -->
+
+    <main class="main">
+
+        <header class="topbar">
+
+            <div>
+
+                <p class="eyebrow">
+                    VISÃO GERAL
+                </p>
+
+                <h1 id="page-title">
+                    Dashboard
+                </h1>
+
+            </div>
+
+            <button
+                class="primary-button"
+                id="new-launch">
+                + Novo lançamento
+            </button>
+
+        </header>
+
+
+        <!-- DASHBOARD -->
+
+        <section
+            id="dashboard"
+            class="section active-section">
+
+            <div class="filters">
+
+                <label>
+
+                    Mês
+
+                    <input
+                        type="month"
+                        id="month-filter">
+
+                </label>
+
+                <button
+                    class="clear-button"
+                    id="clear-filter">
+
+                    Todos
+
+                </button>
+
+            </div>
+
+
+            <!-- CARDS -->
+
+            <div class="cards">
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Saldo
+                    </div>
+
+                    <strong id="balance">
+                        R$ 0,00
+                    </strong>
+
+                    <small>
+                        Receitas − despesas
+                    </small>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Receitas
+                    </div>
+
+                    <strong
+                        id="income"
+                        class="income-text">
+
+                        R$ 0,00
+
+                    </strong>
+
+                    <small>
+                        Total recebido
+                    </small>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Despesas
+                    </div>
+
+                    <strong
+                        id="expense"
+                        class="expense-text">
+
+                        R$ 0,00
+
+                    </strong>
+
+                    <small>
+                        Total gasto
+                    </small>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-title">
+                        Lançamentos
+                    </div>
+
+                    <strong id="count">
+                        0
+                    </strong>
+
+                    <small>
+                        Movimentações
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <!-- GRÁFICOS -->
+
+            <div class="dashboard-grid">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <h2>
+                                Receitas x Despesas
+                            </h2>
+
+                            <span>
+                                Comparativo do período selecionado
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="income-expense-chart"
+                        class="category-chart">
+
+                    </div>
+
+                </div>
+
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <h2>
+                                Despesas por categoria
+                            </h2>
+
+                            <span>
+                                Distribuição dos gastos
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="category-chart"
+                        class="category-chart">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ÚLTIMOS LANÇAMENTOS -->
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Últimos lançamentos
+                        </h2>
+
+                        <span>
+                            Movimentações recentes
+                        </span>
+
+                    </div>
+
+                    <button
+                        class="link-button"
+                        data-go="lancamentos">
+
+                        Ver todos
+
+                    </button>
+
+                </div>
+
+                <div id="recent-list"></div>
+
+            </div>
+
+        </section>
+
+
+        <!-- LANÇAMENTOS -->
+
+        <section
+            id="lancamentos"
+            class="section">
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Lançamentos
+                        </h2>
+
+                        <span>
+                            Receitas e despesas
+                        </span>
+
+                    </div>
+
+                    <button
+                        class="primary-button"
+                        id="new-launch-2">
+
+                        + Novo lançamento
+
+                    </button>
+
+                </div>
+
+
+                <div class="table-container">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Data
+                                </th>
+
+                                <th>
+                                    Descrição
+                                </th>
+
+                                <th>
+                                    Categoria
+                                </th>
+
+                                <th>
+                                    Tipo
+                                </th>
+
+                                <th>
+                                    Valor
+                                </th>
+
+                                <th>
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="transactions-table">
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- FLUXO DE CAIXA -->
+        <section id="fluxo-caixa" class="section">
+            <div class="cards cashflow-summary">
+                <div class="card">
+                    <div class="card-title">Saldo confirmado</div>
+                    <strong id="cashflow-confirmed">R$ 0,00</strong>
+                    <small>Pagamentos e recebimentos confirmados</small>
+                </div>
+                <div class="card">
+                    <div class="card-title">Saldo previsto</div>
+                    <strong id="cashflow-forecast">R$ 0,00</strong>
+                    <small>Inclui lançamentos pendentes</small>
+                </div>
+                <div class="card">
+                    <div class="card-title">Pendentes</div>
+                    <strong id="cashflow-pending">0</strong>
+                    <small>Para confirmar</small>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Entradas e despesas por data</h2>
+                        <span>O saldo previsto acumula receitas e despesas na ordem das datas</span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                                <th>Situação</th>
+                                <th>Saldo previsto</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cashflow-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- CATEGORIAS -->
+
+        <section
+            id="categorias"
+            class="section">
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Categorias
+                        </h2>
+
+                        <span>
+                            Categorias utilizadas
+                        </span>
+
+                    </div>
+
+                    <button class="primary-button" id="new-category" type="button">
+                        + Nova categoria
+                    </button>
+
+                </div>
+
+                <div
+                    id="categories-grid"
+                    class="categories-grid">
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MODAL DE CATEGORIA -->
+    <div id="category-modal" class="modal hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow">CATEGORIAS</p>
+                    <h2 id="category-modal-title">Nova categoria</h2>
+                </div>
+                <button id="close-category-modal" class="close-button" type="button">×</button>
+            </div>
+
+            <form id="category-form">
+                <label>
+                    Nome
+                    <input type="text" id="category-name" placeholder="Ex.: Alimentação" maxlength="40" required>
+                </label>
+                <label>
+                    Tipo
+                    <select id="category-type" required>
+                        <option value="income">Receita</option>
+                        <option value="expense">Despesa</option>
+                    </select>
+                </label>
+                <button class="primary-button full-button" type="submit">Salvar categoria</button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL NOVO LANÇAMENTO -->
+
+    <div
+        id="modal"
+        class="modal hidden">
+
+        <div class="modal-box">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <p class="eyebrow">
+                        NOVO REGISTRO
+                    </p>
+
+                    <h2 id="transaction-modal-title">
+                        Novo lançamento
+                    </h2>
+
+                </div>
+
+                <button
+                    id="close-modal"
+                    class="close-button">
+
+                    ×
+
+                </button>
+
+            </div>
+
+
+            <form id="transaction-form">
+
+                <div class="type-selector">
+
+                    <label>
+
+                        <input
+                            type="radio"
+                            name="type"
+                            value="income"
+                            checked>
+
+                        <span>
+                            Receita
+                        </span>
+
+                    </label>
+
+
+                    <label>
+
+                        <input
+                            type="radio"
+                            name="type"
+                            value="expense">
+
+                        <span>
+                            Despesa
+                        </span>
+
+                    </label>
+
+                </div>
+
+
+                <div class="form-grid">
+
+                    <label>
+
+                        Descrição
+
+                        <input
+                            type="text"
+                            id="description"
+                            placeholder="Ex.: Salário"
+                            required>
+
+                    </label>
+
+
+                    <label>
+
+                        Valor
+
+                        <input
+                            type="text"
+                            id="value"
+                            inputmode="decimal"
+                            placeholder="R$ 0,00"
+                            required>
+
+                    </label>
+
+
+                    <label>
+
+                        Data
+
+                        <input
+                            type="date"
+                            id="date"
+                            required>
+
+                    </label>
+
+
+                    <label>
+
+                        Categoria
+
+                        <select
+                            id="category"
+                            required>
+
+                        </select>
+
+                    </label>
+
+                </div>
+
+
+                <label>
+
+                    Observação
+
+                    <textarea
+                        id="note"
+                        rows="3"
+                        placeholder="Opcional">
+                    </textarea>
+
+                </label>
+
+                <label>
+                    Situação
+                    <select id="transaction-status">
+                        <option value="pending">Pendente</option>
+                        <option value="confirmed" id="confirmed-status-label">Recebido</option>
+                    </select>
+                </label>
+
+
+                <button
+                    class="primary-button full-button"
+                    type="submit">
+
+                    Salvar lançamento
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
