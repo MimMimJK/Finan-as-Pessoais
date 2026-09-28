@@ -918,6 +918,106 @@ td:last-child {
     justify-content: flex-start;
 }
 
+.auth-screen {
+    display: none;
+}
+
+body.signed-out .auth-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: var(--background);
+}
+
+body.signed-out > .sidebar,
+body.signed-out > .main,
+body.signed-out > #modal,
+body.signed-out > #category-modal {
+    display: none;
+}
+
+.auth-card {
+    width: min(420px, 100%);
+    padding: 30px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.auth-card .logo-icon {
+    margin-bottom: 22px;
+}
+
+.auth-card h1 {
+    margin-bottom: 8px;
+    font-size: 24px;
+}
+
+.auth-description,
+.auth-message {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.auth-description {
+    margin-bottom: 22px;
+}
+
+.auth-card form {
+    display: grid;
+    gap: 14px;
+}
+
+.auth-card label {
+    display: grid;
+    gap: 7px;
+    color: #667085;
+    font-size: 12px;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.auth-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.auth-actions button {
+    flex: 1;
+}
+
+.secondary-button {
+    padding: 11px 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: var(--text);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.auth-message:empty {
+    display: none;
+}
+
+.auth-message.error {
+    color: var(--red);
+}
+
+.sign-out-button {
+    margin-left: 12px;
+}
+
 .edit-transaction-button {
     border: 0;
     background: transparent;

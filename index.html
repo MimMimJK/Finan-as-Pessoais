@@ -10,7 +10,31 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="signed-out">
+
+    <section id="auth-screen" class="auth-screen">
+        <div class="auth-card">
+            <div class="logo-icon">F</div>
+            <p class="eyebrow">FINANÇAS PESSOAIS</p>
+            <h1>Acesse sua conta</h1>
+            <p class="auth-description">Entre ou crie uma conta para sincronizar seus dados com segurança.</p>
+            <form id="auth-form">
+                <label>
+                    Nome de usuário
+                    <input type="text" id="auth-username" autocomplete="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]{3,30}" placeholder="ex.: jose_gabriel" required>
+                </label>
+                <label>
+                    Senha
+                    <input type="password" id="auth-password" autocomplete="current-password" minlength="6" required>
+                </label>
+                <div class="auth-actions">
+                    <button class="primary-button" id="auth-sign-in" type="button">Entrar</button>
+                    <button class="secondary-button" id="auth-sign-up" type="button">Criar conta</button>
+                </div>
+                <p id="auth-message" class="auth-message" aria-live="polite"></p>
+            </form>
+        </div>
+    </section>
 
     <!-- MENU LATERAL -->
 
@@ -85,6 +109,9 @@
                 id="new-launch">
                 + Novo lançamento
             </button>
+
+            <span class="signed-in-label">Olá, <strong id="signed-in-user"></strong></span>
+            <button class="clear-button sign-out-button" id="sign-out" type="button">Sair</button>
 
         </header>
 
@@ -651,6 +678,8 @@
     </div>
 
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
     <script src="script.js"></script>
 
 </body>

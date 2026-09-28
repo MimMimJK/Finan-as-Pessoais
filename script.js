@@ -41,6 +41,10 @@ let transactions =
         localStorage.getItem(STORAGE_KEY) || "[]"
     );
 
+let supabaseClient = null;
+let currentUser = null;
+let cloudLoadPromise = null;
+
 
 const $ = id =>
     document.getElementById(id);
@@ -180,6 +184,174 @@ function openModal(transaction = null) {
         $("transaction-status").value = transaction.status || "confirmed";
     }
 
+}
+
+function transactionRow(transaction) {
+    return {
+        ...transaction,
+        user_id: currentUser.id,
+        status: transaction.status || "confirmed"
+    };
+}
+
+async function upsertCloudTransaction(transaction) {
+    if (!supabaseClient || !currentUser) return;
+    const { error } = await supabaseClient
+        .from("transactions")
+        .upsert(transactionRow(transaction));
+    if (error) throw error;
+}
+
+async function deleteCloudTransaction(id) {
+    if (!supabaseClient || !currentUser) return;
+    const { error } = await supabaseClient
+        .from("transactions")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", currentUser.id);
+    if (error) throw error;
+}
+
+async function upsertCloudCategories(categoryList) {
+    if (!supabaseClient || !currentUser || !categoryList.length) return;
+    const rows = categoryList.map(({ name, type }) => ({
+        user_id: currentUser.id,
+        name,
+        type
+    }));
+    const { error } = await supabaseClient
+        .from("categories")
+        .upsert(rows, { onConflict: "user_id,name" });
+    if (error) throw error;
+}
+
+async function deleteCloudCategory(name) {
+    if (!supabaseClient || !currentUser) return;
+    const { error } = await supabaseClient
+        .from("categories")
+        .delete()
+        .eq("user_id", currentUser.id)
+        .eq("name", name);
+    if (error) throw error;
+}
+
+async function syncAllTransactionsToCloud() {
+    if (!supabaseClient || !currentUser || !transactions.length) return;
+    const { error } = await supabaseClient
+        .from("transactions")
+        .upsert(transactions.map(transactionRow));
+    if (error) throw error;
+}
+
+async function loadCloudData(user) {
+    if (cloudLoadPromise) return cloudLoadPromise;
+
+    cloudLoadPromise = (async () => {
+        currentUser = user;
+        const migrationKey = "supabase_local_data_migrated";
+        const shouldMigrateLocal = localStorage.getItem(migrationKey) !== "done";
+        const localTransactions = [...transactions];
+        const localCategories = JSON.parse(JSON.stringify(categories));
+
+        const [transactionResult, categoryResult, profileResult] = await Promise.all([
+            supabaseClient.from("transactions").select("*").order("date", { ascending: true }),
+            supabaseClient.from("categories").select("*").order("name", { ascending: true }),
+            supabaseClient.from("profiles").select("username").eq("user_id", user.id).maybeSingle()
+        ]);
+        if (transactionResult.error) throw transactionResult.error;
+        if (categoryResult.error) throw categoryResult.error;
+        if (profileResult.error) throw profileResult.error;
+
+        let profile = profileResult.data;
+        if (!profile) {
+            const username = user.user_metadata?.username;
+            if (!username) throw new Error("Perfil de usuário não encontrado.");
+            const { error } = await supabaseClient
+                .from("profiles")
+                .insert({ user_id: user.id, username });
+            if (error) throw error;
+            profile = { username };
+        }
+
+        let cloudTransactions = transactionResult.data || [];
+        let cloudCategories = categoryResult.data || [];
+
+        if (shouldMigrateLocal) {
+            const mergedTransactions = new Map(cloudTransactions.map(item => [item.id, item]));
+            localTransactions.forEach(item => {
+                mergedTransactions.set(item.id, transactionRow(item));
+            });
+            const transactionRows = [...mergedTransactions.values()];
+            if (transactionRows.length) {
+                const { error } = await supabaseClient.from("transactions").upsert(transactionRows);
+                if (error) throw error;
+                cloudTransactions = transactionRows;
+            }
+
+            const mergedCategories = new Map(cloudCategories.map(item => [item.name, item]));
+            ["income", "expense"].forEach(type => {
+                (localCategories[type] || []).forEach(name => {
+                    mergedCategories.set(name, { user_id: user.id, name, type });
+                });
+            });
+            const categoryRows = [...mergedCategories.values()].map(({ name, type }) => ({ name, type }));
+            await upsertCloudCategories(categoryRows);
+            cloudCategories = categoryRows;
+            localStorage.setItem(migrationKey, "done");
+        }
+
+        transactions = cloudTransactions.map(({ user_id, created_at, updated_at, ...item }) => ({
+            ...item,
+            value: Number(item.value),
+            status: item.status || "confirmed"
+        }));
+        categories = {
+            income: cloudCategories.filter(item => item.type === "income").map(item => item.name),
+            expense: cloudCategories.filter(item => item.type === "expense").map(item => item.name)
+        };
+
+        save();
+        saveCategories();
+        renderAll();
+        $("signed-in-user").textContent = profile.username;
+        document.body.classList.remove("signed-out");
+        $("auth-message").textContent = "";
+    })();
+
+    try {
+        await cloudLoadPromise;
+    } finally {
+        cloudLoadPromise = null;
+    }
+}
+
+function showAuthMessage(message, isError = false) {
+    const element = $("auth-message");
+    element.textContent = message;
+    element.classList.toggle("error", isError);
+}
+
+async function initializeSupabase() {
+    const config = window.SUPABASE_CONFIG;
+    if (!window.supabase || !config?.url || !config?.publishableKey) {
+        showAuthMessage("Configure a Project URL e a chave pública do Supabase.", true);
+        return;
+    }
+
+    supabaseClient = window.supabase.createClient(config.url, config.publishableKey);
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (!session) {
+            currentUser = null;
+            document.body.classList.add("signed-out");
+            return;
+        }
+        if (["INITIAL_SESSION", "SIGNED_IN", "TOKEN_REFRESHED"].includes(event)) {
+            currentUser = session.user;
+            setTimeout(() => loadCloudData(session.user).catch(error => {
+                showAuthMessage(`Não foi possível carregar o banco: ${error.message}`, true);
+            }), 0);
+        }
+    });
 }
 
 function parseCurrencyInput(value) {
@@ -967,7 +1139,7 @@ function closeCategoryModal() {
     $("category-modal").classList.add("hidden");
 }
 
-function saveCategory(event) {
+async function saveCategory(event) {
     event.preventDefault();
     const name = $("category-name").value.trim();
     const type = $("category-type").value;
@@ -984,6 +1156,10 @@ function saveCategory(event) {
         return;
     }
 
+    const oldCategory = editingCategory;
+    const previousCategories = JSON.parse(JSON.stringify(categories));
+    const previousTransactions = transactions.map(transaction => ({ ...transaction }));
+
     if (editingCategory) {
         const { name: oldName, type: oldType } = editingCategory;
         categories[oldType] = categories[oldType].filter(item => item !== oldName);
@@ -991,24 +1167,47 @@ function saveCategory(event) {
         transactions.forEach(transaction => {
             if (transaction.category === oldName) transaction.category = name;
         });
-        save();
     } else {
         categories[type].push(name);
     }
 
+    try {
+        await upsertCloudCategories([
+            ...categories.income.map(categoryName => ({ name: categoryName, type: "income" })),
+            ...categories.expense.map(categoryName => ({ name: categoryName, type: "expense" }))
+        ]);
+        if (oldCategory) {
+            await syncAllTransactionsToCloud();
+            await deleteCloudCategory(oldCategory.name);
+        }
+    } catch (error) {
+        categories = previousCategories;
+        transactions = previousTransactions;
+        save();
+        alert(`Não foi possível salvar a categoria no Supabase: ${error.message}`);
+        return;
+    }
+
     saveCategories();
+    save();
     closeCategoryModal();
     updateCategoryOptions();
 
     renderAll();
 }
 
-function deleteCategory(name, type) {
+async function deleteCategory(name, type) {
     if (transactions.some(transaction => transaction.category === name)) {
         alert("Essa categoria está sendo usada em lançamentos. Edite esses lançamentos antes de excluí-la.");
         return;
     }
     if (!confirm(`Excluir a categoria "${name}"?`)) return;
+    try {
+        await deleteCloudCategory(name);
+    } catch (error) {
+        alert(`Não foi possível excluir a categoria no Supabase: ${error.message}`);
+        return;
+    }
     categories[type] = categories[type].filter(item => item !== name);
     saveCategories();
     updateCategoryOptions();
@@ -1018,7 +1217,14 @@ function deleteCategory(name, type) {
 
 /* EXCLUIR */
 
-function removeTransaction(id) {
+async function removeTransaction(id) {
+
+    try {
+        await deleteCloudTransaction(id);
+    } catch (error) {
+        alert(`Não foi possível excluir o lançamento no Supabase: ${error.message}`);
+        return;
+    }
 
     transactions =
         transactions.filter(
@@ -1186,12 +1392,20 @@ $("value").addEventListener("input", event => {
     event.target.value = digits ? money(Number(digits) / 100) : "";
 });
 
-$("cashflow-table").addEventListener("click", event => {
+$("cashflow-table").addEventListener("click", async event => {
     const button = event.target.closest("[data-transaction-id]");
     if (!button) return;
     const transaction = transactions.find(item => item.id === button.dataset.transactionId);
     if (!transaction) return;
+    const previousStatus = transaction.status;
     transaction.status = transaction.status === "pending" ? "confirmed" : "pending";
+    try {
+        await upsertCloudTransaction(transaction);
+    } catch (error) {
+        transaction.status = previousStatus;
+        alert(`Não foi possível atualizar no Supabase: ${error.message}`);
+        return;
+    }
     save();
     renderAll();
 });
@@ -1208,6 +1422,62 @@ $("categories-grid").addEventListener("click", event => {
     const { action, name, type } = button.dataset;
     if (action === "edit") openCategoryModal({ name, type });
     if (action === "delete") deleteCategory(name, type);
+});
+
+async function authenticate(action) {
+    if (!supabaseClient) {
+        showAuthMessage("A conexão Supabase não iniciou. Verifique a internet e atualize a página.", true);
+        return;
+    }
+
+    const username = $("auth-username").value.trim().toLowerCase();
+    const password = $("auth-password").value;
+    if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+        showAuthMessage("Use de 3 a 30 caracteres: letras sem acento, números ou _. Ex.: jose_gabriel", true);
+        return;
+    }
+    if (password.length < 6) {
+        showAuthMessage("A senha precisa ter pelo menos 6 caracteres.", true);
+        return;
+    }
+
+    const internalAuthEmail = `${username}@users.financas.invalid`;
+    showAuthMessage(action === "signup" ? "Criando conta..." : "Entrando...");
+
+    try {
+        const result = action === "signup"
+            ? await supabaseClient.auth.signUp({
+                email: internalAuthEmail,
+                password,
+                options: { data: { username } }
+            })
+            : await supabaseClient.auth.signInWithPassword({
+                email: internalAuthEmail,
+                password
+            });
+
+        if (result.error) throw result.error;
+        if (action === "signup" && !result.data.session) {
+            showAuthMessage("Ative o cadastro sem confirmação de e-mail no Supabase para usar somente nome de usuário.", true);
+            return;
+        }
+        showAuthMessage("Acesso autorizado. Carregando seus dados...");
+    } catch (error) {
+        showAuthMessage(error.message || "Não foi possível conectar ao Supabase.", true);
+    }
+}
+
+$("auth-sign-in").addEventListener("click", () => authenticate("signin"));
+$("auth-sign-up").addEventListener("click", () => authenticate("signup"));
+$("auth-form").addEventListener("submit", event => {
+    event.preventDefault();
+    authenticate("signin");
+});
+
+$("sign-out").addEventListener("click", async () => {
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) alert(`Não foi possível sair: ${error.message}`);
 });
 
 document
@@ -1322,7 +1592,7 @@ document
 $("transaction-form")
     .addEventListener(
         "submit",
-        event => {
+        async event => {
 
             event.preventDefault();
 
@@ -1368,6 +1638,13 @@ $("transaction-form")
 
             };
 
+            try {
+                await upsertCloudTransaction(transaction);
+            } catch (error) {
+                alert(`Não foi possível salvar no Supabase: ${error.message}`);
+                return;
+            }
+
 
             if (editingTransactionId) {
                 transactions = transactions.map(item =>
@@ -1397,3 +1674,5 @@ $("date").value =
 updateCategoryOptions();
 
 renderAll();
+
+initializeSupabase();
