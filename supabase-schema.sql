@@ -49,9 +49,14 @@ create table if not exists public.transactions (
     type text not null check (type in ('income', 'expense')),
     note text not null default '',
     status text not null default 'pending' check (status in ('pending', 'confirmed')),
+    is_fixed boolean not null default false,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+-- Permite atualizar projetos que já criaram a tabela antes deste recurso.
+alter table public.transactions
+    add column if not exists is_fixed boolean not null default false;
 
 alter table public.categories enable row level security;
 alter table public.transactions enable row level security;

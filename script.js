@@ -182,6 +182,7 @@ function openModal(transaction = null) {
         $("category").value = transaction.category ?? "";
         $("note").value = transaction.note || "";
         $("transaction-status").value = transaction.status || "confirmed";
+        $("transaction-fixed").checked = Boolean(transaction.is_fixed);
     }
 
 }
@@ -190,7 +191,8 @@ function transactionRow(transaction) {
     return {
         ...transaction,
         user_id: currentUser.id,
-        status: transaction.status || "confirmed"
+        status: transaction.status || "confirmed",
+        is_fixed: Boolean(transaction.is_fixed)
     };
 }
 
@@ -303,7 +305,8 @@ async function loadCloudData(user) {
         transactions = cloudTransactions.map(({ user_id, created_at, updated_at, ...item }) => ({
             ...item,
             value: Number(item.value),
-            status: item.status || "confirmed"
+            status: item.status || "confirmed",
+            is_fixed: Boolean(item.is_fixed)
         }));
         categories = {
             income: cloudCategories.filter(item => item.type === "income").map(item => item.name),
@@ -1063,6 +1066,7 @@ function renderTable() {
                                 transaction.description
                             }
                         </strong>
+                        ${transaction.is_fixed ? '<br><small class="fixed-label">Fixo mensal</small>' : ""}
 
                     </td>
 
@@ -1346,6 +1350,7 @@ function renderCashflow() {
     if (!ordered.length) {
         $("cashflow-table").innerHTML = `
             <tr><td colspan="7"><div class="empty">Nenhum lançamento cadastrado.</div></td></tr>`;
+        renderMonthlyProjection();
         return;
     }
 
@@ -1364,7 +1369,7 @@ function renderCashflow() {
         return `
             <tr>
                 <td>${new Date(transaction.date + "T12:00:00").toLocaleDateString("pt-BR")}</td>
-                <td><strong>${escapeHTML(transaction.description)}</strong></td>
+                <td><strong>${escapeHTML(transaction.description)}</strong>${transaction.is_fixed ? '<br><small class="fixed-label">Fixo mensal</small>' : ""}</td>
                 <td>${escapeHTML(transaction.category)}</td>
                 <td class="${transaction.type}-text">${transaction.type === "income" ? "+" : "−"}${money(transaction.value)}</td>
                 <td><span class="status-badge ${isConfirmed ? "confirmed" : "pending"}">${statusLabel}</span></td>
@@ -1372,6 +1377,69 @@ function renderCashflow() {
                 <td><button class="cashflow-action" data-transaction-id="${transaction.id}">${actionLabel}</button></td>
             </tr>`;
     }).join("");
+    renderMonthlyProjection();
+}
+
+function monthKeyFromOffset(baseMonth, offset) {
+    const [year, month] = baseMonth.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1 + offset, 1));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(monthKey) {
+    const [year, month] = monthKey.split("-").map(Number);
+    return new Date(year, month - 1, 1).toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric"
+    });
+}
+
+function renderMonthlyProjection() {
+    const table = $("monthly-projection-table");
+    if (!table) return;
+
+    const currentMonthKey = currentMonth();
+    const monthCount = Number($("projection-months").value) || 12;
+    let projectedBalance = transactions.reduce((balance, transaction) => {
+        const transactionMonth = transaction.date.slice(0, 7);
+        if (transactionMonth > currentMonthKey) return balance;
+        const value = Number(transaction.value);
+        const signedValue = transaction.type === "income" ? value : -value;
+        if (!transaction.is_fixed || transactionMonth === currentMonthKey) return balance + signedValue;
+
+        const [startYear, startMonth] = transactionMonth.split("-").map(Number);
+        const [currentYear, currentMonthNumber] = currentMonthKey.split("-").map(Number);
+        const elapsedMonths = (currentYear - startYear) * 12 + currentMonthNumber - startMonth;
+        return balance + signedValue * (elapsedMonths + 1);
+    }, 0);
+
+    const rows = [];
+    for (let offset = 1; offset <= monthCount; offset += 1) {
+        const targetMonth = monthKeyFromOffset(currentMonthKey, offset);
+        let income = 0;
+        let expense = 0;
+
+        transactions.forEach(transaction => {
+            const transactionMonth = transaction.date.slice(0, 7);
+            const isScheduledThisMonth = transactionMonth === targetMonth;
+            const isRecurringOccurrence = Boolean(transaction.is_fixed) && transactionMonth < targetMonth;
+            if (!isScheduledThisMonth && !isRecurringOccurrence) return;
+
+            if (transaction.type === "income") income += Number(transaction.value);
+            else expense += Number(transaction.value);
+        });
+
+        projectedBalance += income - expense;
+        rows.push(`
+            <tr>
+                <td class="projection-month-name">${monthLabel(targetMonth)}</td>
+                <td class="income-text">${money(income)}</td>
+                <td class="expense-text">${money(expense)}</td>
+                <td class="${projectedBalance < 0 ? "expense-text" : "income-text"}"><strong>${money(projectedBalance)}</strong></td>
+            </tr>`);
+    }
+
+    table.innerHTML = rows.join("");
 }
 
 
@@ -1661,7 +1729,10 @@ $("transaction-form")
                     $("note").value.trim(),
 
                 status:
-                    $("transaction-status").value
+                    $("transaction-status").value,
+
+                is_fixed:
+                    $("transaction-fixed").checked
 
             };
 
@@ -1699,6 +1770,8 @@ $("date").value =
 
 
 updateCategoryOptions();
+
+$("projection-months").addEventListener("change", renderMonthlyProjection);
 
 renderAll();
 

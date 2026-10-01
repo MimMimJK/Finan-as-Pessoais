@@ -1066,6 +1066,80 @@ body.signed-out > #category-modal {
     background: #dbeafe;
 }
 
+.recurring-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #f8fafc;
+    cursor: pointer;
+}
+
+.recurring-option input {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    accent-color: var(--primary);
+}
+
+.recurring-option span {
+    display: grid;
+    gap: 4px;
+}
+
+.recurring-option strong {
+    color: var(--text);
+    font-size: 13px;
+}
+
+.recurring-option small,
+.projection-footnote,
+.fixed-label {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.monthly-projection-panel {
+    margin-top: 20px;
+}
+
+.projection-header {
+    align-items: center;
+}
+
+.projection-period {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.projection-period select {
+    width: auto;
+    min-width: 105px;
+    padding: 8px 10px;
+}
+
+.projection-month-name {
+    text-transform: capitalize;
+    font-weight: 600;
+}
+
+.projection-footnote {
+    margin: 10px 18px 18px;
+}
+
+.fixed-label {
+    display: inline-block;
+    margin-top: 3px;
+    color: #475467;
+}
+
 
 .badge {
 

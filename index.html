@@ -446,6 +446,37 @@
                     </table>
                 </div>
             </div>
+
+            <div class="panel monthly-projection-panel">
+                <div class="panel-header projection-header">
+                    <div>
+                        <h2>Saldo dos próximos meses</h2>
+                        <span>Projeção com os lançamentos cadastrados e as receitas e despesas fixas</span>
+                    </div>
+                    <label class="projection-period">
+                        Mostrar
+                        <select id="projection-months" aria-label="Meses futuros para projetar">
+                            <option value="3">3 meses</option>
+                            <option value="6">6 meses</option>
+                            <option value="12" selected>12 meses</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mês</th>
+                                <th>Receitas previstas</th>
+                                <th>Despesas previstas</th>
+                                <th>Saldo projetado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-projection-table"></tbody>
+                    </table>
+                </div>
+                <p class="projection-footnote">A projeção inclui lançamentos pendentes. Lançamentos fixos são repetidos mensalmente a partir do mês informado; as ocorrências futuras são previsões e não precisam ser confirmadas nesta tabela.</p>
+            </div>
         </section>
 
 
@@ -660,6 +691,14 @@
                         <option value="pending">Pendente</option>
                         <option value="confirmed" id="confirmed-status-label">Recebido</option>
                     </select>
+                </label>
+
+                <label class="recurring-option">
+                    <input type="checkbox" id="transaction-fixed">
+                    <span>
+                        <strong>Fixo, repete todo mês</strong>
+                        <small>As próximas ocorrências entram na projeção mensal a partir da data informada.</small>
+                    </span>
                 </label>
 
 
