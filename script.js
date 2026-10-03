@@ -44,6 +44,7 @@ let transactions =
 let supabaseClient = null;
 let currentUser = null;
 let cloudLoadPromise = null;
+let selectedCashflowFilter = "all";
 
 
 const $ = id =>
@@ -1330,6 +1331,7 @@ function renderAll() {
 
 function renderCashflow() {
     const ordered = [...transactions].sort((a, b) =>
+        (a.type === "income" ? 0 : 1) - (b.type === "income" ? 0 : 1) ||
         a.date.localeCompare(b.date) || (a.id || "").localeCompare(b.id || "")
     );
 
@@ -1358,6 +1360,7 @@ function renderCashflow() {
     $("cashflow-table").innerHTML = ordered.map(transaction => {
         const signedValue = transaction.type === "income" ? transaction.value : -transaction.value;
         runningBalance += signedValue;
+        if (selectedCashflowFilter !== "all" && transaction.type !== selectedCashflowFilter) return "";
         const isConfirmed = transaction.status !== "pending";
         const statusLabel = isConfirmed
             ? (transaction.type === "income" ? "Recebido" : "Pago")
@@ -1376,7 +1379,7 @@ function renderCashflow() {
                 <td class="${runningBalance < 0 ? "expense-text" : "income-text"}">${money(runningBalance)}</td>
                 <td><button class="cashflow-action" data-transaction-id="${transaction.id}">${actionLabel}</button></td>
             </tr>`;
-    }).join("");
+    }).join("") || `<tr><td colspan="7"><div class="empty">Nenhum lançamento neste filtro.</div></td></tr>`;
     renderMonthlyProjection();
 }
 
@@ -1512,6 +1515,19 @@ function switchSection(section) {
 
 
 /* EVENTOS */
+
+$("cashflow-filters").addEventListener("click", event => {
+    const button = event.target.closest("[data-cashflow-filter]");
+    if (!button) return;
+
+    selectedCashflowFilter = button.dataset.cashflowFilter;
+    $("cashflow-filters").querySelectorAll("[data-cashflow-filter]").forEach(filterButton => {
+        const isSelected = filterButton === button;
+        filterButton.classList.toggle("active", isSelected);
+        filterButton.setAttribute("aria-pressed", String(isSelected));
+    });
+    renderCashflow();
+});
 
 $("transactions-table").addEventListener("click", event => {
     const editButton = event.target.closest("button[data-edit-transaction]");

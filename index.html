@@ -423,10 +423,15 @@
             </div>
 
             <div class="panel">
-                <div class="panel-header">
+                <div class="panel-header cashflow-panel-header">
                     <div>
-                        <h2>Entradas e despesas por data</h2>
-                        <span>O saldo previsto acumula receitas e despesas na ordem das datas</span>
+                        <h2>Receitas e despesas</h2>
+                        <span>As receitas são somadas primeiro; as despesas são abatidas em seguida</span>
+                    </div>
+                    <div id="cashflow-filters" class="cashflow-filters" role="group" aria-label="Filtrar fluxo de caixa">
+                        <button type="button" class="cashflow-filter active" data-cashflow-filter="all" aria-pressed="true">Todas</button>
+                        <button type="button" class="cashflow-filter" data-cashflow-filter="income" aria-pressed="false">Receitas</button>
+                        <button type="button" class="cashflow-filter" data-cashflow-filter="expense" aria-pressed="false">Despesas</button>
                     </div>
                 </div>
                 <div class="table-container">
